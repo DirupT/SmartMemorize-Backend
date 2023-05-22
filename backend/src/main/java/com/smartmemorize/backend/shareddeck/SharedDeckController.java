@@ -18,8 +18,15 @@ public class SharedDeckController {
 
     @PostMapping("/{deckId}/share/{userId}")
     @Operation(summary = "Share a deck with a user", description = "Share the given deck with the given user.")
-    public ResponseEntity<Void> createSharedDeck(@PathVariable Long deckId, @PathVariable Long userId) {
+    public ResponseEntity<Void> shareDeck(@PathVariable Long deckId, @PathVariable Long userId) {
         service.shareDeck(deckId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{deckId}/invite/{userId}")
+    @Operation(summary = "Invite a user to a deck", description = "Invite the given user to the given deck.")
+    public ResponseEntity<Void> inviteUser(@PathVariable Long deckId, @PathVariable Long userId) {
+        service.inviteUser(deckId, userId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -25,6 +25,13 @@ public class Deck {
     @OneToMany(mappedBy = "deck", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Card> cards = new ArrayList<>();
 
+    public Deck() {}
+
+    public Deck(String name, User owner) {
+        this.name = name;
+        this.owner = owner;
+    }
+
     public Long getId() {
         return id;
     }
@@ -39,6 +46,10 @@ public class Deck {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public boolean isOwner(User user) {
+        return owner.equals(user);
     }
 
     public User getOwner() {

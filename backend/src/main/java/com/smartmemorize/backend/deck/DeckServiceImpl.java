@@ -3,14 +3,11 @@ package com.smartmemorize.backend.deck;
 import com.smartmemorize.backend.card.CardService;
 import com.smartmemorize.backend.deck.dto.CreateDeckDTO;
 import com.smartmemorize.backend.deck.dto.DeckResponseDTO;
-import com.smartmemorize.backend.deck.exceptions.DeckNotFoundException;
 import com.smartmemorize.backend.deck.exceptions.UnauthorizedDeckAccessException;
+import com.smartmemorize.backend.deck.util.DeckUtil;
 import com.smartmemorize.backend.user.User;
-import com.smartmemorize.backend.user.UserRepository;
+import com.smartmemorize.backend.user.util.UserUtil;
 import org.modelmapper.ModelMapper;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,16 +16,19 @@ import java.util.Set;
 
 @Service
 public class DeckServiceImpl implements DeckService {
-    private final UserRepository userRepository;
+    private final UserUtil userUtil;
+    private final DeckUtil deckUtil;
     private final DeckRepository deckRepository;
     private final CardService cardService;
     private final ModelMapper modelMapper;
 
-    public DeckServiceImpl(UserRepository userRepository,
+    public DeckServiceImpl(UserUtil userUtil,
+                           DeckUtil deckUtil,
                            DeckRepository deckRepository,
                            CardService cardService,
                            ModelMapper modelMapper) {
-        this.userRepository = userRepository;
+        this.userUtil = userUtil;
+        this.deckUtil = deckUtil;
         this.deckRepository = deckRepository;
         this.cardService = cardService;
         this.modelMapper = modelMapper;
@@ -37,10 +37,7 @@ public class DeckServiceImpl implements DeckService {
     @Override
     @Transactional
     public void createDeck(CreateDeckDTO deck) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        User user = userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + authentication.getName()));
+        User user = userUtil.getUser();
 
         Deck newDeck = modelMapper.map(deck, Deck.class);
         newDeck.setOwner(user);
@@ -51,13 +48,9 @@ public class DeckServiceImpl implements DeckService {
 
     @Override
     public Set<DeckResponseDTO> getAllDecks() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        User user = userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + authentication.getName()));
+        User user = userUtil.getUser();
 
         Set<Deck> decks = deckRepository.findByOwner(user);
-
         Set<DeckResponseDTO> deckResponseDTOs = new HashSet<>();
 
         for (Deck deck : decks) {
@@ -71,15 +64,10 @@ public class DeckServiceImpl implements DeckService {
 
     @Override
     public void deleteDeck(Long deckId) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User user = userUtil.getUser();
+        Deck deck = deckUtil.getDeckById(deckId);
 
-        User user = userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + authentication.getName()));
-
-        Deck deck = deckRepository.findById(deckId)
-                .orElseThrow(() -> new DeckNotFoundException("Deck not found with id: " + deckId));
-
-        if (!deck.getOwner().equals(user)) {
+        if (!deck.isOwner(user)) {
             throw new UnauthorizedDeckAccessException("User is not authorized to delete deck with id: " + deckId);
         }
 
@@ -88,15 +76,10 @@ public class DeckServiceImpl implements DeckService {
 
     @Override
     public void updateDeck(Long deckId, CreateDeckDTO deck) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User user = userUtil.getUser();
+        Deck deckToUpdate = deckUtil.getDeckById(deckId);
 
-        User user = userRepository.findByUsername(authentication.getName())
-               .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + authentication.getName()));
-
-        Deck deckToUpdate = deckRepository.findById(deckId)
-               .orElseThrow(() -> new DeckNotFoundException("Deck not found with id: " + deckId));
-
-        if (!deckToUpdate.getOwner().equals(user)) {
+        if (!deckToUpdate.isOwner(user)) {
             throw new UnauthorizedDeckAccessException("User is not authorized to update deck with id: " + deckId);
         }
 
