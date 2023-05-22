@@ -1,18 +1,14 @@
-package com.smartmemorize.backend.shareddeck;
+package com.smartmemorize.backend.deckinvitation;
 
 import com.smartmemorize.backend.deck.Deck;
-import com.smartmemorize.backend.deckinvitation.DeckInvitation;
-import com.smartmemorize.backend.deckinvitation.InviteStatus;
 import com.smartmemorize.backend.user.User;
 import jakarta.persistence.*;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 @Entity
-@Table(name = "shared_decks")
-public class SharedDeck {
+@Table(name = "deck_invitation")
+public class DeckInvitation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -25,6 +21,17 @@ public class SharedDeck {
     @JoinColumn(name = "deck_id")
     private Deck deck;
 
+    @Enumerated(EnumType.STRING)
+    private InviteStatus status = InviteStatus.PENDING;
+
+    public DeckInvitation() {
+    }
+
+    public DeckInvitation(User user, Deck deck) {
+        this.user = user;
+        this.deck = deck;
+    }
+
     public Long getId() {
         return id;
     }
@@ -35,6 +42,10 @@ public class SharedDeck {
 
     public User getUser() {
         return user;
+    }
+
+    public boolean isRecipient(User user) {
+        return this.user.equals(user);
     }
 
     public void setUser(User user) {
@@ -49,16 +60,23 @@ public class SharedDeck {
         this.deck = deck;
     }
 
-    public SharedDeck(User user, Deck deck) {
-        this.user = user;
-        this.deck = deck;
+    public InviteStatus getStatus() {
+        return status;
+    }
+
+    public boolean isPending() {
+        return status == InviteStatus.PENDING;
+    }
+
+    public void setStatus(InviteStatus status) {
+        this.status = status;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        SharedDeck that = (SharedDeck) o;
+        DeckInvitation that = (DeckInvitation) o;
         return Objects.equals(id, that.id);
     }
 
@@ -69,10 +87,10 @@ public class SharedDeck {
 
     @Override
     public String toString() {
-        return "SharedDeck{" +
+        return "DeckInvitation{" +
                 "id=" + id +
-                ", user=" + user +
-                ", deck=" + deck +
+                ", user=" + user.getUsername() +
+                ", deck=" + deck.getName() +
                 '}';
     }
 }

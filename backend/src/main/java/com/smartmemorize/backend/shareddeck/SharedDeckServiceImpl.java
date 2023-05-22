@@ -2,10 +2,15 @@ package com.smartmemorize.backend.shareddeck;
 
 import com.smartmemorize.backend.card.Card;
 import com.smartmemorize.backend.deck.Deck;
-import com.smartmemorize.backend.deck.DeckRepository;
 import com.smartmemorize.backend.deck.exceptions.UnauthorizedDeckAccessException;
 import com.smartmemorize.backend.deck.util.DeckUtil;
+import com.smartmemorize.backend.deckinvitation.DeckInvitation;
+import com.smartmemorize.backend.deckinvitation.DeckInvitationRepository;
+import com.smartmemorize.backend.deckinvitation.exception.InvitationNotFoundException;
+import com.smartmemorize.backend.deckinvitation.exception.UserNotRecipientException;
 import com.smartmemorize.backend.review.Review;
+import com.smartmemorize.backend.deckinvitation.exception.InviteAlreadyExistsException;
+import com.smartmemorize.backend.shareddeck.exception.UserAlreadyMemberException;
 import com.smartmemorize.backend.user.User;
 import com.smartmemorize.backend.user.util.UserUtil;
 import org.springframework.stereotype.Service;
@@ -16,30 +21,29 @@ public class SharedDeckServiceImpl implements SharedDeckService {
     private final UserUtil userUtil;
     private final DeckUtil deckUtil;
     private final SharedDeckRepository sharedDeckRepository;
-    private final DeckRepository deckRepository;
+    private final DeckInvitationRepository deckInvitationRepository;
 
     public SharedDeckServiceImpl(UserUtil userUtil,
                                  DeckUtil deckUtil,
                                  SharedDeckRepository sharedDeckRepository,
-                                 DeckRepository deckRepository) {
+                                 DeckInvitationRepository deckInvitationRepository) {
         this.userUtil = userUtil;
         this.deckUtil = deckUtil;
         this.sharedDeckRepository = sharedDeckRepository;
-        this.deckRepository = deckRepository;
+        this.deckInvitationRepository = deckInvitationRepository;
     }
 
     @Override
     @Transactional
     public void shareDeck(Long deckId, Long userId) {
         User user = userUtil.getUser();
-        User recipient = userUtil.getUserById(userId);
-
         Deck deck = deckUtil.getDeckById(deckId);
 
         if (!deck.isOwner(user)) {
             throw new UnauthorizedDeckAccessException("User is not authorized to share deck with id: " + deckId);
         }
 
+        User recipient = userUtil.getUserById(userId);
         Deck newDeck = new Deck(deck.getName(), recipient);
 
         for (Card card : deck.getCards()) {
@@ -51,26 +55,68 @@ public class SharedDeckServiceImpl implements SharedDeckService {
         }
 
         recipient.addOwnedDeck(newDeck);
-        deckRepository.save(newDeck);
     }
 
     @Override
     @Transactional
     public void inviteUser(Long deckId, Long userId) {
         User user = userUtil.getUser();
-        User recipient = userUtil.getUserById(userId);
-
         Deck deck = deckUtil.getDeckById(deckId);
 
         if (!deck.isOwner(user)) {
             throw new UnauthorizedDeckAccessException("User is not authorized to invite to deck with id: " + deckId);
         }
 
-        SharedDeck sharedDeck = new SharedDeck(recipient, deck);
+        if (sharedDeckRepository.existsByUserAndDeck(user, deck)) {
+            throw new UserAlreadyMemberException("User is already a member of the deck with id: " + deckId);
+        }
 
-        recipient.addSharedDeck(sharedDeck);
+        deckInvitationRepository.findByUserAndDeck(user, deck)
+                .filter(DeckInvitation::isPending)
+                .ifPresent(invitation -> {
+                    throw new InviteAlreadyExistsException("User is already invited to deck with id: " + deck);
+                });
+
+        User recipient = userUtil.getUserById(userId);
+        DeckInvitation newDeckInvitation = new DeckInvitation(recipient, deck);
+
+        recipient.addDeckInvitation(newDeckInvitation);
+        deck.addDeckInvitation(newDeckInvitation);
+    }
+
+    @Override
+    @Transactional
+    public void acceptInvite(Long inviteId) {
+        User user = userUtil.getUser();
+
+        DeckInvitation invitation = deckInvitationRepository.findById(inviteId)
+                .orElseThrow(() -> new InvitationNotFoundException("Invitation not found with id: " + inviteId));
+
+        if (!invitation.isRecipient(user)) {
+            throw new UserNotRecipientException("User is not the recipient for invitation with id: " + inviteId);
+        }
+
+        Deck deck = invitation.getDeck();
+        SharedDeck sharedDeck = new SharedDeck(user, deck);
+
+        user.addSharedDeck(sharedDeck);
         deck.addSharedDeck(sharedDeck);
 
-        sharedDeckRepository.save(sharedDeck);
+        deckInvitationRepository.delete(invitation);
+    }
+
+    @Override
+    @Transactional
+    public void rejectInvite(Long inviteId) {
+        User user = userUtil.getUser();
+
+        DeckInvitation invitation = deckInvitationRepository.findById(inviteId)
+              .orElseThrow(() -> new InvitationNotFoundException("Invitation not found with id: " + inviteId));
+
+        if (!invitation.isRecipient(user)) {
+            throw new UserNotRecipientException("User is not the recipient for invitation with id: " + inviteId);
+        }
+
+        deckInvitationRepository.delete(invitation);
     }
 }

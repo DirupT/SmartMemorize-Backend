@@ -1,6 +1,7 @@
 package com.smartmemorize.backend.deck;
 
 import com.smartmemorize.backend.card.Card;
+import com.smartmemorize.backend.deckinvitation.DeckInvitation;
 import com.smartmemorize.backend.shareddeck.SharedDeck;
 import com.smartmemorize.backend.user.User;
 import jakarta.persistence.*;
@@ -24,6 +25,9 @@ public class Deck {
 
     @OneToMany(mappedBy = "deck", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Card> cards = new ArrayList<>();
+
+    @OneToMany(mappedBy = "deck", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DeckInvitation> deckInvitations = new ArrayList<>();
 
     public Deck() {}
 
@@ -82,6 +86,18 @@ public class Deck {
 
     public void addCard(Card card) {
         cards.add(card);
+    }
+
+    public List<DeckInvitation> getDeckInvitations() {
+        return deckInvitations;
+    }
+
+    public void addDeckInvitation(DeckInvitation newDeckInvitation) {
+        deckInvitations.add(newDeckInvitation);
+    }
+
+    public void setDeckInvitations(List<DeckInvitation> deckInvitations) {
+        this.deckInvitations = deckInvitations;
     }
 
     @Override
