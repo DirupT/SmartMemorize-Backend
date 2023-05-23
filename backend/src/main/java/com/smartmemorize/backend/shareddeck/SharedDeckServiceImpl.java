@@ -80,8 +80,7 @@ public class SharedDeckServiceImpl implements SharedDeckService {
         User recipient = userUtil.getUserById(userId);
         DeckInvitation newDeckInvitation = new DeckInvitation(recipient, deck);
 
-        recipient.addDeckInvitation(newDeckInvitation);
-        deck.addDeckInvitation(newDeckInvitation);
+        deckInvitationRepository.save(newDeckInvitation);
     }
 
     @Override
@@ -97,11 +96,12 @@ public class SharedDeckServiceImpl implements SharedDeckService {
         }
 
         Deck deck = invitation.getDeck();
-        SharedDeck sharedDeck = new SharedDeck(user, deck);
 
-        user.addSharedDeck(sharedDeck);
-        deck.addSharedDeck(sharedDeck);
+        for (Card card : deck.getCards()) {
+            card.addReview(new Review(user, card));
+        }
 
+        sharedDeckRepository.save(new SharedDeck(user, deck));
         deckInvitationRepository.delete(invitation);
     }
 
@@ -118,5 +118,24 @@ public class SharedDeckServiceImpl implements SharedDeckService {
         }
 
         deckInvitationRepository.delete(invitation);
+    }
+
+    @Override
+    @Transactional
+    public void removeUser(Long deckId, Long userId) {
+        User user = userUtil.getUser();
+        Deck deck = deckUtil.getDeckById(deckId);
+
+        if (!deck.isOwner(user)) {
+            throw new UnauthorizedDeckAccessException("User is not authorized to remove user from deck with id: " + deckId);
+        }
+
+        User recipient = userUtil.getUserById(userId);
+
+        if (!sharedDeckRepository.existsByUserAndDeck(recipient, deck)) {
+            throw new UserAlreadyMemberException("User is not a member of the deck with id: " + deckId);
+        }
+
+        sharedDeckRepository.deleteByUserAndDeck(recipient, deck);
     }
 }

@@ -41,7 +41,6 @@ public class DeckServiceImpl implements DeckService {
 
         Deck newDeck = modelMapper.map(deck, Deck.class);
         newDeck.setOwner(user);
-        user.addOwnedDeck(newDeck);
 
         deckRepository.save(newDeck);
     }

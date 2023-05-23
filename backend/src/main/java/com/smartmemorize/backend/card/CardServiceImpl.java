@@ -6,6 +6,7 @@ import com.smartmemorize.backend.card.exceptions.UnauthorizedCardAccessException
 import com.smartmemorize.backend.card.util.CardUtil;
 import com.smartmemorize.backend.deck.Deck;
 import com.smartmemorize.backend.deck.util.DeckUtil;
+import com.smartmemorize.backend.shareddeck.SharedDeck;
 import com.smartmemorize.backend.user.User;
 import com.smartmemorize.backend.review.Review;
 import com.smartmemorize.backend.review.ReviewRepository;
@@ -46,11 +47,12 @@ public class CardServiceImpl implements CardService {
         Deck deck = deckUtil.getDeckById(card.getDeckId());
 
         Card newCard = new Card(card.getFront(), card.getBack(), deck);
-        Review userReview = reviewRepository.save(new Review(user, newCard));
+        newCard.addReview(new Review(user, newCard));
 
-        deck.addCard(newCard);
-        newCard.addReview(userReview);
-        user.addReview(userReview);
+        for (SharedDeck sharedDeck : deck.getSharedDecks()) {
+            User member = sharedDeck.getUser();
+            newCard.addReview(new Review(member, newCard));
+        }
 
         cardRepository.save(newCard);
     }

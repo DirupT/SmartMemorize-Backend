@@ -13,11 +13,9 @@ public class Review {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne
     @JoinColumn(name = "card_id")
     private Card card;
 

@@ -1,13 +1,9 @@
 package com.smartmemorize.backend.shareddeck;
 
 import com.smartmemorize.backend.deck.Deck;
-import com.smartmemorize.backend.deckinvitation.DeckInvitation;
-import com.smartmemorize.backend.deckinvitation.InviteStatus;
 import com.smartmemorize.backend.user.User;
 import jakarta.persistence.*;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -17,13 +13,18 @@ public class SharedDeck {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne
     @JoinColumn(name = "deck_id")
     private Deck deck;
+
+    public SharedDeck() {}
+
+    public SharedDeck(User user, Deck deck) {
+        this.user = user;
+        this.deck = deck;
+    }
 
     public Long getId() {
         return id;
@@ -46,11 +47,6 @@ public class SharedDeck {
     }
 
     public void setDeck(Deck deck) {
-        this.deck = deck;
-    }
-
-    public SharedDeck(User user, Deck deck) {
-        this.user = user;
         this.deck = deck;
     }
 
